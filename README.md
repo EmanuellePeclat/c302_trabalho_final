@@ -22,3 +22,12 @@ textiles <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/t
 transport <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/main/data/2026/2026-05-05/transport.csv')
 
 
+# Using Python
+# Option 1: pydytuesday python library
+## pip install pydytuesday
+
+import pydytuesday
+
+# Download files from the week, which you can then read in locally
+pydytuesday.get_date('2026-05-05')
+
