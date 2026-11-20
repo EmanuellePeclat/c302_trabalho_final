@@ -28,3 +28,14 @@ food_text_trans <- food_beverages |>
   inner_join(textiles, by = "Year") |> 
   inner_join(transport, by = "Year")
 
+# Using Python
+# Option 1: pydytuesday python library
+## pip install pydytuesday
+
+import pydytuesday
+
+# Download files from the week, which you can then read in locally
+pydytuesday.get_date('2026-05-05')
+
+# Criar um backup
+por emergencia criar uma copia
