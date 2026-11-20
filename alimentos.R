@@ -29,7 +29,6 @@ comidas_bebidas <- food_beverages |>
     Cerveja = Beer
   ) |>
   mutate(
-    Decada = paste0(floor(Ano / 10) * 10, "s"),
     across(c(Glicose, Substituto_café, Oleo_de_sementes), ~ .x / 10)
   )
 
@@ -39,6 +38,9 @@ comidas_bebidas_longer <- comidas_bebidas |>
     cols = all_of(variaveis_prod),
     names_to = "Variavel",
     values_to = "Valor"
+  ) |> 
+  mutate(
+    Decada = paste0(floor(Ano / 10) * 10, "s")
   )
 
 # Estatística descritiva
@@ -111,26 +113,24 @@ ui <- dashboardPage(
         ),
         fluidRow(
           box(
-            title = "Base traduzida e convertida para Alimentos e Bebidas",
+            title = "Base traduzida e convertida (comidas_bebidas)",
             status = "success",
             solidHeader = TRUE,
-            width = 8,
+            width = 6,
             div(
               class = "btn-download-espaco",
-              downloadButton("baixar_comidas_bebidas", "Download_base_traduzida (.csv)", class = "btn-success")
+              downloadButton("baixar_comidas_bebidas", "Baixar comidas_bebidas (.csv)", class = "btn-success")
             ),
             DTOutput("tabela_dados_brutos")
-          )
-        ),
-        fluidRow(
+          ),
           box(
-            title = "Estatística descritiva agrupado por década e produto (sem considerar NAs)",
+            title = "Estatística descritiva por década e produto",
             status = "success",
             solidHeader = TRUE,
-            width = 8,
+            width = 6,
             div(
               class = "btn-download-espaco",
-              downloadButton("baixar_descritiva", "Download_descritiva (.csv)", class = "btn-success")
+              downloadButton("baixar_descritiva", "Baixar estatística descritiva (.csv)", class = "btn-success")
             ),
             DTOutput("tabela_DT")
           )
