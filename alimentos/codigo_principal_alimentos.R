@@ -4,7 +4,6 @@ library(shinydashboard)
 library(DT)
 library(plotly)
 
-  
 #traduzir a library DT
 options(DT.options = list(
   language = list(
@@ -75,11 +74,11 @@ tabela_descritiva <- comidas_bebidas_longer |>
     n_na    = sum(is.na(Valor)),
     media   = mean(Valor, na.rm = TRUE),
     dp      = sd(Valor, na.rm = TRUE),
-    min     = min(Valor, na.rm = TRUE),
+    min     = suppressWarnings(min(Valor, na.rm = TRUE)),
     q1      = quantile(Valor, probs = 0.25, na.rm = TRUE, names = FALSE),
     mediana = median(Valor, na.rm = TRUE),
     q3      = quantile(Valor, probs = 0.75, na.rm = TRUE, names = FALSE),
-    max     = max(Valor, na.rm = TRUE),
+    max     = suppressWarnings(max(Valor, na.rm = TRUE)),
     .groups = "drop"
   ) |>
   mutate(
@@ -90,11 +89,7 @@ tabela_descritiva <- comidas_bebidas_longer |>
   ) |>
   arrange(Decada, Variavel)
 
-#tabela no shiny
-tabela_DT <- tabela_descritiva |>
-  filter(n_obs > 0) |>
-  mutate(across(c(media, dp, min, q1, mediana, q3, max), ~ round(.x, 2)))
-
+#funções
 anos_min <- min(comidas_bebidas_longer$Ano, na.rm = TRUE)
 anos_max <- max(comidas_bebidas_longer$Ano, na.rm = TRUE)
 decadas  <- sort(unique(na.omit(comidas_bebidas_longer$Decada)))
@@ -107,3 +102,20 @@ fmt_br <- function(x) {
   )
 }
 
+
+#=============== Segunda Aba ====================
+dados_decada <- comidas_bebidas_longer |>
+  filter(!is.na(Decada), !is.na(Variavel), !is.na(Valor)) |>
+  summarise(
+    valor_decada = mean(Valor, na.rm = TRUE),
+    dp_decada    = sd(Valor, na.rm = TRUE),
+    n_obs        = n(),
+    .by = c(Decada, Variavel)
+  ) |>
+  mutate(
+    decada_num = as.numeric(sub("s$", "", Decada)),
+    dp_decada  = coalesce(dp_decada, 0),   # década com 1 observação: DP = 0
+    inferior   = valor_decada - dp_decada,
+    superior   = valor_decada + dp_decada
+  ) |>
+  arrange(Variavel, decada_num)

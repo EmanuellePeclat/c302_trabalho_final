@@ -76,7 +76,7 @@ ui <- dashboardPage(
         ),
         fluidRow(
           box(
-            title = "Distribuição Histórica por Década",
+            title = "Distribuição dos Produtos por Década e Evolução de cada item ao longo do tempo",
             status = "success",
             solidHeader = TRUE,
             width = 12,
@@ -106,34 +106,27 @@ ui <- dashboardPage(
         tabName = "aba2_his_war_beer",
         fluidRow(
           box(
-            title = "Série Anual com Tendência LOESS",
+            title = "Média por Década (± desvio padrão) com Destaques de 1914–1918 e 1939–1945",
             status = "success",
             solidHeader = TRUE,
             width = 12,
-            sidebarLayout(
-              sidebarPanel(
-                selectInput(
-                  inputId = "variavel_serie",
-                  label = "Selecione o Produto (Variável):",
-                  choices = variaveis_prod,
-                  selected = "Cerveja"
-                ),
-                sliderInput(
-                  inputId = "janela_anos",
-                  label = "Janela de anos:",
-                  min = anos_min,
-                  max = anos_max,
-                  value = c(max(anos_min, anos_max - 25), anos_max),
-                  sep = "",
-                  step = 1
-                )
-              ),
-              mainPanel(
-                plotlyOutput(outputId = "grafico_serie_loess", height = "480px")
-              )
+            plotlyOutput(outputId = "grafico_mm_guerras", height = "900px")
+          )
+        ),
+        fluidRow(
+          box(
+            title = "Média histórica por década e produto (log1p)",
+            status = "success",
+            solidHeader = TRUE,
+            width = 12,
+            plotlyOutput(outputId = "grafico_heat", height = "520px"),
+            helpText(
+              "Cor = log1p da média. Em cada célula: média e desvio padrão (±).",
+              "Passe o mouse para ver N, NAs, média, DP, mín, Q1, mediana, Q3 e máx.",
+              "Células em branco = década sem dados para a variável."
             )
           )
-        )
+        ),
       )
     )
   )
@@ -345,54 +338,173 @@ server <- function(input, output) {
   
   
   #=============== segunda aba ===================  
-  output$grafico_serie_loess <- renderPlotly({
-    req(input$variavel_serie, input$janela_anos)
+    limites_y_mm <- reactive({
+      dados_decada |>
+        summarise(
+          ymin = min(valor_decada, na.rm = TRUE),
+          ymax = max(valor_decada, na.rm = TRUE),
+          .by = Variavel
+        ) |>
+        mutate(
+          folga = (ymax - ymin) * 0.05,
+          ymin  = ymin - folga,
+          ymax  = ymax + folga
+        ) |>
+        select(Variavel, ymin, ymax)
+    })
     
-    ano_ini <- input$janela_anos[1]
-    ano_fim <- input$janela_anos[2]
-    
-    dados_serie <- comidas_bebidas_longer |>
-      filter(
-        Variavel == input$variavel_serie,
-        !is.na(Ano),
-        !is.na(Valor),
-        Ano >= (ano_ini - 10),
-        Ano <= ano_fim
+    periodos_guerra <- reactive({
+      tibble(
+        xmin   = c(1910, 1940) - 5,
+        xmax   = c(1910, 1940) + 5,
+        guerra = c("1910s (1914–1918)", "1940s (1939–1945)")
       ) |>
-      mutate(
-        texto_ponto = paste0(
-          "<b>Ano:</b> ", Ano, "<br>",
-          "<b>", input$variavel_serie, ":</b> ", fmt_br(Valor)
+        crossing(limites_y_mm())
+    })
+    
+    output$grafico_mm_guerras <- renderPlotly({
+      eixo_x <- sort(unique(dados_decada$decada_num))
+      
+      dd <- dados_decada |>
+        mutate(
+          texto_hover = paste0(
+            "<b>Década:</b> ", Decada, "<br>",
+            "<b>Média:</b> ", fmt_br(valor_decada), "<br>",
+            "<b>DP:</b> ", fmt_br(dp_decada), "<br>",
+            "<b>Média ± DP:</b> ", fmt_br(inferior), " – ", fmt_br(superior), "<br>",
+            "<b>N:</b> ", n_obs
+          )
         )
+      
+      p <- ggplot() +
+        geom_rect(
+          data = periodos_guerra(),
+          aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax, fill = guerra),
+          alpha = 0.35,
+          inherit.aes = FALSE
+        ) +
+        geom_errorbar(
+          data = dd,
+          aes(x = decada_num, ymin = inferior, ymax = superior, color = Variavel),
+          width = 2, linewidth = 0.6, alpha = 0.8
+        ) +
+        geom_line(
+          data = dd,
+          aes(x = decada_num, y = valor_decada, color = Variavel, group = Variavel),
+          linewidth = 0.9, alpha = 0.9
+        ) +
+        geom_point(
+          data = dd,
+          aes(x = decada_num, y = valor_decada, color = Variavel, text = texto_hover),
+          size = 2, alpha = 0.95
+        ) +
+        facet_wrap(~ Variavel, scales = "free_y", ncol = 2) +
+        scale_fill_manual(
+          values = c("1910s (1914–1918)" = "#f39c12", "1940s (1939–1945)" = "#e74c3c"),
+          name = "Período destacado"
+        ) +
+        scale_x_continuous(breaks = eixo_x, labels = paste0(eixo_x, "s")) +
+        scale_y_continuous(
+          labels = scales::label_number(big.mark = ".", decimal.mark = ",")
+        ) +
+        labs(
+          x = "Década", y = "Média na década"
+        ) +
+        theme_dark() +
+        theme(
+          axis.text.x = element_text(angle = 45, hjust = 1),
+          legend.position = "bottom"
+        ) +
+        guides(color = "none")
+      
+      ggplotly(p, tooltip = "text") |>
+        layout(hoverlabel = list(align = "left"))
+    })
+    output$grafico_heat <- renderPlotly({
+      # fmt_br que aceita NA
+      f <- function(x) ifelse(is.na(x), "NA", fmt_br(x))
+      
+      d <- tabela_descritiva |>
+        filter(!is.na(Decada)) |>
+        mutate(
+          Decada   = factor(Decada, levels = decadas),
+          Variavel = factor(Variavel, levels = variaveis_prod),
+          z        = log1p(media),
+          hover = paste0(
+            "<b>Década:</b> ", Decada, "<br>",
+            "<b>Variável:</b> ", Variavel, "<br>",
+            "<b>N:</b> ", n_obs, " | <b>NAs:</b> ", n_na, "<br>",
+            "<b>Média:</b> ", f(media), "<br>",
+            "<b>DP:</b> ", f(dp), "<br>",
+            "<b>Mín:</b> ", f(min), "<br>",
+            "<b>Q1:</b> ", f(q1), "<br>",
+            "<b>Mediana (Q2):</b> ", f(mediana), "<br>",
+            "<b>Q3:</b> ", f(q3), "<br>",
+            "<b>Máx:</b> ", f(max)
+          ),
+          rotulo = ifelse(
+            is.na(media), "",
+            paste0(f(media), "<br>±", f(dp))
+          )
+        )
+      
+      # texto branco nas células escuras, preto nas claras
+      z_meio <- mean(range(d$z, na.rm = TRUE))
+      d <- d |>
+        mutate(cor_txt = ifelse(!is.na(z) & z > z_meio, "white", "black"))
+      
+      anotacoes <- lapply(seq_len(nrow(d)), function(i) {
+        list(
+          x = as.character(d$Decada[i]),
+          y = as.character(d$Variavel[i]),
+          text = d$rotulo[i],
+          showarrow = FALSE,
+          font = list(size = 10, color = d$cor_txt[i])
+        )
+      })
+      
+      plot_ly(
+        data = d,
+        x = ~Decada,
+        y = ~Variavel,
+        z = ~z,
+        type = "heatmap",
+        text = ~hover,
+        hoverinfo = "text",
+        colorscale = list(c(0, "#ffffcc"), c(0.5, "#fd8d3c"), c(1, "#800026")),
+        colorbar = list(title = "log1p(média)")
       ) |>
-      arrange(Ano)
+        layout(
+          xaxis = list(title = "Década", categoryorder = "array", categoryarray = decadas),
+          yaxis = list(title = "Variável", autorange = "reversed"),
+          annotations = anotacoes,
+          hoverlabel = list(align = "left")
+        )
+    })
     
-    validate(need(nrow(dados_serie) > 0, "Sem observações válidas no período selecionado."))
+    limites_y_mm <- reactive({
+      dados_decada |>
+        summarise(
+          ymin = min(valor_decada, na.rm = TRUE),
+          ymax = max(valor_decada, na.rm = TRUE),
+          .by = Variavel
+        ) |>
+        mutate(
+          folga = (ymax - ymin) * 0.05,
+          ymin  = ymin - folga,
+          ymax  = ymax + folga
+        ) |>
+        select(Variavel, ymin, ymax)
+    })
     
-    p_serie <- ggplot(dados_serie, aes(x = Ano, y = Valor)) +
-      geom_segment(
-        aes(xend = Ano, yend = 0, color = Valor, text = texto_ponto),
-        linewidth = 0.8
-      ) +
-      geom_smooth(method = "loess", se = FALSE, color = "#1f4e78", linewidth = 1) +
-      coord_cartesian(xlim = c(ano_ini, ano_fim)) +
-      scale_color_gradient(
-        low = "red",
-        high = "#00a65a",
-        labels = scales::label_number(big.mark = ".", decimal.mark = ",")
-      ) +
-      labs(
-        title = paste("Série Anual e Tendência LOESS:", input$variavel_serie),
-        subtitle = paste0("Recorte visual: ", ano_ini, "–", ano_fim),
-        x = "Ano",
-        y = input$variavel_serie,
-        color = input$variavel_serie
-      ) +
-      theme_minimal(base_size = 12)
-    
-    ggplotly(p_serie, tooltip = "text") |>
-      layout(hoverlabel = list(align = "left"))
-  })
+    periodos_guerra <- reactive({
+      tibble(
+        xmin   = c(1910, 1940) - 5,
+        xmax   = c(1910, 1940) + 5,
+        guerra = c("1910s (1914–1918)", "1940s (1939–1945)")
+      ) |>
+        crossing(limites_y_mm())
+    })
 }
 
 shinyApp(ui = ui, server = server)
