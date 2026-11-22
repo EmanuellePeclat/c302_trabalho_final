@@ -6,3 +6,5 @@
 library(shiny)
 library(bslib)      # cards e caixas de valor (value_box)
 library(tidyverse)
+library(DT)
+library(plotly)
