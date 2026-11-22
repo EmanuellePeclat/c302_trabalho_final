@@ -10,7 +10,6 @@ esses são os dados para abrir no R, pode ser pela opção 1 ou 2
 tuesdata <- tidytuesdayR::tt_load('2026-05-05')
 ## OR
 tuesdata <- tidytuesdayR::tt_load(2026, week = 18)
-
 food_beverages <- tuesdata$food_beverages
 textiles <- tuesdata$textiles
 transport <- tuesdata$transport
