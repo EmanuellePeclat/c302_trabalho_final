@@ -1,0 +1,165 @@
+---
+title: "Relatorio sobre Produção Italiana"
+subtitle: "Série Histórica de Alimentos e Bebidas e Estatísticas"
+author: Eduardo, Emanuelle, Emily, Kelly, Shirley
+date: 20/11/2026
+date-format: long
+theme: cosmo
+editor: visual
+---
+
+## Introdução
+
+### Alimentos e bebidas
+
+Este documento estrutura o plano de exploração, tratamento estatístico e visualização de dados históricos referentes ao setor de alimentos e bebidas no período de 1871 a 1985. O conjunto de dados abrange sete produtos principais: açúcar, glicose, substituto para café, óleo de sementes, álcool etílico 1, álcool etílico 2 e cerveja.
+
+O objetivo central é evidenciar a evolução temporal de produção ou consumo ao longo de mais de um século, identificando padrões estruturais, impactos de eventos históricos, correlações entre insumos e mudanças de comportamento econômico.
+
+Devido à extensão histórica da base (1871–1985), observa-se uma quantidade significativa de valores ausentes (NAs), característica comum em registros antigos.
+
+## Metodologia
+
+Para viabilizar a análise e começar o tratamento dos dados, foram realizadas as etapas a seguir de limpeza e organização do arquivo disponível:
+
+- **Limpeza e Padronização:** Tratamento inicial da base, padronização dos nomes das variáveis, conversão dos dados em toneladas e hectolitros.
+
+- **Agrupamento por Décadas:** Classificação dos anos em intervalos de dez em dez anos para suavizar lacunas anuais e revelar tendências de longo prazo.
+
+- **Estatística Descritiva (Excluindo NAs):** Cálculo de medidas de tendência central e dispersão por década e por produto, contemplando Média, Mediana, Desvio Padrão, Primeiro Quartil (Q1) e Terceiro Quartil (Q3).
+
+### Dados Utilizados
+
+```{r}
+food_beverages <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/main/data/2026/2026-05-05/food_beverages.csv')
+
+```
+
+### Limpeza e padronização
+
+#### Variáveis nas colunas do csv, para renomear os dados
+
+```{r}
+variaveis_prod<- c("Açúcar", "Glicose", "Substituto_café", "Oleo_de_sementes","Etanol_1", "Etanol_2", "Cerveja")
+```
+
+#### Tradução das colunas dos dados
+
+```{r}
+comidas_bebidas <- food_beverages |>
+  rename(
+    Ano = Year,
+    Açúcar = Sugar,
+    Glicose = Glucose,
+    Substituto_café = Coffee_substitute,
+    Oleo_de_sementes = Seed_oil,
+    Etanol_1 = Ethyl_alcohol_1,
+    Etanol_2 = Ethyl_alcohol_2,
+    Cerveja = Beer
+  ) |>
+  mutate(
+    across(c(Glicose, Substituto_café, Oleo_de_sementes), ~ .x / 10)
+  )
+```
+
+#### Transformar em pivot_longer
+
+```{r}
+comidas_bebidas_longer <- comidas_bebidas |>
+  pivot_longer(
+    cols = all_of(variaveis_prod),
+    names_to = "Variavel",
+    values_to = "Valor"
+  ) |> 
+  mutate(
+    Decada = paste0(floor(Ano / 10) * 10, "s")
+  )
+```
+
+### Gráficos aba 1 - Estatística descritiva e Gráfico de Violino
+
+```{r}
+cols_estat <- c("media", "dp", "min", "q1", "mediana", "q3", "max")
+
+tabela_descritiva <- comidas_bebidas_longer |>
+  group_by(Decada, Variavel) |>
+  summarise(
+    n_obs   = sum(!is.na(Valor)),
+    n_na    = sum(is.na(Valor)),
+    media   = mean(Valor, na.rm = TRUE),
+    dp      = sd(Valor, na.rm = TRUE),
+    min     = suppressWarnings(min(Valor, na.rm = TRUE)),
+    q1      = quantile(Valor, probs = 0.25, na.rm = TRUE, names = FALSE),
+    mediana = median(Valor, na.rm = TRUE),
+    q3      = quantile(Valor, probs = 0.75, na.rm = TRUE, names = FALSE),
+    max     = suppressWarnings(max(Valor, na.rm = TRUE)),
+    .groups = "drop"
+  ) |>
+  mutate(
+    across(
+      all_of(cols_estat),
+      ~ if_else(is.nan(.x) | is.infinite(.x) | is.na(.x), NA_real_, .x)
+    )
+  ) |>
+  arrange(Decada, Variavel)
+```
+
+#### Funções - aba 1
+
+```{r}
+anos_min <- min(comidas_bebidas_longer$Ano, na.rm = TRUE)
+anos_max <- max(comidas_bebidas_longer$Ano, na.rm = TRUE)
+decadas  <- sort(unique(na.omit(comidas_bebidas_longer$Decada)))
+
+fmt_br <- function(x) {
+  ifelse(is.na(x) | !is.finite(x), "NA",
+    formatC(x, format = "f", digits = 2, big.mark = ".", decimal.mark = ","))
+}
+```
+
+### Gráficos aba 2 - Série e Heatmap
+
+```{r}
+dados_decada <- comidas_bebidas_longer |>
+  filter(!is.na(Decada), !is.na(Variavel), !is.na(Valor)) |>
+  summarise(
+    valor_decada = mean(Valor, na.rm = TRUE),
+    dp_decada    = sd(Valor, na.rm = TRUE),
+    n_obs        = n(),
+    .by = c(Decada, Variavel)
+  ) |>
+  mutate(
+    decada_num = as.numeric(sub("s$", "", Decada)),
+    dp_decada  = coalesce(dp_decada, 0),   # década com 1 observação: DP = 0
+    inferior   = valor_decada - dp_decada,
+    superior   = valor_decada + dp_decada
+  ) |>
+  arrange(Variavel, decada_num)
+
+```
+
+## Resultados 
+
+Após a limpeza inicial dos dados, foi possível mapear o comportamento descritivo das séries, como média, mediana, máximos e mínimos e outras, e comparar dinâmica entre os produtos ao longo do tempo, inclusive durante os períodos das duas Guerras Mundiais.
+
+### Visão geral e estatística descritiva
+Esta etapa apresenta o panorama estrutural da base, reunindo indicadores-chave (KPIs) como o total de linhas, a janela temporal de 1871 a 1985 e o número de variáveis avaliadas. O agrupamento por décadas permite acompanhar o comportamento agregado e a evolução de cada produto ao longo dos decênios, enquanto a tabela de estatísticas descritivas consolida média, mediana, desvio padrão, Q1 e Q3 para avaliar o nível e a variabilidade dos registros. Para complementar essa leitura, gráficos de distribuição, como o gráfico de violino ajudam a visualizar a dispersão, a mediana, a amplitude interquartis e os valores extremos (outliers) de cada item ao longo do período.
+
+### Comparação entre os produtos e guerras mundiais
+Para investigar as relações entre as séries, o heatmap de correlação evidencia quais produtos tendem a caminhar juntos, divergir ou apresentar comportamento independente. Nesse cenário, a cerveja ganha destaque não apenas pela intensidade de suas associações no heatmap, onde aparece com a tonalidade mais escura associada aos maiores valores da escala, mas também pela magnitude de sua expansão de longo prazo. Ao longo do período analisado, a série evolui de uma média inicial de 112 mil hectolitros para aproximadament 9,5 milhões de hectolitros no no final da década de 1980s.
+Já os conflitos globais funcionam como testes de estresse históricos, marcados por escassez de insumos, racionamento, mudanças de demanda e pressões inflacionárias. Em vez de olhar apenas para as médias durante os conflitos, a análise compara os cenários pré, durante e pós-guerra. Séries temporais com faixas sombreadas (geom_rect) destacando a 1ª Guerra Mundial (1914–1918) e a 2ª Guerra Mundial (1939-1945) facilitam identificar se as oscilações começaram antes do conflito, se concentraram durante ele ou se prolongaram no pós-guerra.
+
+When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
+
+```{r}
+1 + 1
+```
+
+You can add options to executable code like this
+
+```{r}
+#| echo: false
+2 * 2
+```
+
+The `echo: false` option disables the printing of code (only output is displayed).
