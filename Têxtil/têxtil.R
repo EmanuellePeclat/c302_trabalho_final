@@ -106,19 +106,19 @@ ui <- dashboardPage(
           valueBoxOutput("vb_correlacao", width = 4)
         ),
         fluidRow(
-          box(title = "Evolução da Produção", width = 8, status = "primary",
+          box(title = "Produção anual de fio e tecido (mil t)", width = 8, status = "primary",
               plotlyOutput("p_producao", height = "350px")),
-          box(title = "Variação Anual", width = 4, status = "danger",
+          box(title = "Variação anual da produção de fio (%)", width = 4, status = "danger",
               plotlyOutput("p_variacao", height = "350px"))
         ),
         fluidRow(
-          box(title = "Eficiência (Tecido/Fio)", width = 6, status = "success",
+          box(title = "Tecido produzido por unidade de fio", width = 6, status = "success",
               plotlyOutput("p_eficiencia", height = "330px")),
-          box(title = "Queda e Recuperação", width = 6, status = "warning",
+          box(title = "Fio nas duas guerras mundiais", width = 6, status = "warning",
               plotlyOutput("p_indice_guerra", height = "330px"))
         ),
         fluidRow(
-          box(title = "Dados do CSV (textiles.csv)", width = 12, status = "primary",
+          box(title = "Dados originais (textiles.csv)", width = 12, status = "primary",
               div(class = "tabela-scroll", tableOutput("tabela_dt")))
         )
       ),
@@ -128,9 +128,9 @@ ui <- dashboardPage(
           valueBoxOutput("vb_seda", width = 6)
         ),
         fluidRow(
-          box(title = "Composição do Fio", width = 6, status = "info",
+          box(title = "Composição do fio por tipo de fibra (%)", width = 6, status = "info",
               plotlyOutput("p_composicao", height = "400px")),
-          box(title = "Algodão x Seda", width = 6, status = "primary",
+          box(title = "Fio de algodão e seda crua (seda em escala log)", width = 6, status = "primary",
               plotlyOutput("p_seda_algodao", height = "400px"))
         )
       )
