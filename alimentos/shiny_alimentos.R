@@ -1,3 +1,7 @@
+#install.packages("shinydashboard")
+#install.packages("DT")
+#install.packages("plotly")
+
 library(tidyverse)
 library(shiny)
 library(shinydashboard)
