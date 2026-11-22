@@ -4,7 +4,7 @@ library(shinydashboard)
 library(DT)
 library(plotly)
 
-#traduzir a library DT
+# Traduzir a library DT
 options(DT.options = list(
   language = list(
     decimal = ",",
@@ -59,19 +59,20 @@ comidas_bebidas_longer <- comidas_bebidas |>
     cols = all_of(variaveis_prod),
     names_to = "Variavel",
     values_to = "Valor"
-  ) |> 
+  ) |>
   mutate(
     Decada = paste0(floor(Ano / 10) * 10, "s")
   )
 
 # Estatística descritiva
-cols_estat <- c("media", "dp", "min", "q1", "mediana", "q3", "max")
+cols_estat <- c("soma", "media", "dp", "min", "q1", "mediana", "q3", "max")
 
 tabela_descritiva <- comidas_bebidas_longer |>
   group_by(Decada, Variavel) |>
   summarise(
     n_obs   = sum(!is.na(Valor)),
     n_na    = sum(is.na(Valor)),
+    soma    = sum(Valor, na.rm = TRUE),
     media   = mean(Valor, na.rm = TRUE),
     dp      = sd(Valor, na.rm = TRUE),
     min     = suppressWarnings(min(Valor, na.rm = TRUE)),
@@ -89,7 +90,7 @@ tabela_descritiva <- comidas_bebidas_longer |>
   ) |>
   arrange(Decada, Variavel)
 
-#funções
+# Funções e auxiliares
 anos_min <- min(comidas_bebidas_longer$Ano, na.rm = TRUE)
 anos_max <- max(comidas_bebidas_longer$Ano, na.rm = TRUE)
 decadas  <- sort(unique(na.omit(comidas_bebidas_longer$Decada)))
@@ -102,8 +103,7 @@ fmt_br <- function(x) {
   )
 }
 
-
-#=============== Segunda Aba ====================
+#observações de dados por decada
 dados_decada <- comidas_bebidas_longer |>
   filter(!is.na(Decada), !is.na(Variavel), !is.na(Valor)) |>
   summarise(
@@ -114,7 +114,7 @@ dados_decada <- comidas_bebidas_longer |>
   ) |>
   mutate(
     decada_num = as.numeric(sub("s$", "", Decada)),
-    dp_decada  = coalesce(dp_decada, 0),   # década com 1 observação: DP = 0
+    dp_decada  = coalesce(dp_decada, 0), # década com 1 observação: DP = 0
     inferior   = valor_decada - dp_decada,
     superior   = valor_decada + dp_decada
   ) |>
