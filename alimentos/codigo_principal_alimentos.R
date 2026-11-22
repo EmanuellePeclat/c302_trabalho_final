@@ -36,6 +36,17 @@ variaveis_prod <- c(
   "Etanol_1", "Etanol_2", "Cerveja"
 )
 
+# Paleta de cores
+paleta_produtos <- c(
+  "Açúcar"           = "#1b9e77",
+  "Glicose"          = "#d95f02",
+  "Substituto_café"  = "#7570b3",
+  "Oleo_de_sementes" = "#e7298a",
+  "Etanol_1"         = "#66a61e",
+  "Etanol_2"         = "#e6ab02",
+  "Cerveja"          = "#1f78b4"
+)
+
 # Tradução das colunas e conversão de unidades:
 # Glicose, Substituto_café e Oleo_de_sementes: quintal -> toneladas (x / 10)
 comidas_bebidas <- food_beverages |>
@@ -103,7 +114,15 @@ fmt_br <- function(x) {
   )
 }
 
-#observações de dados por decada
+fmt_int_br <- function(x) {
+  ifelse(
+    is.na(x) | !is.finite(x),
+    "NA",
+    formatC(round(x), format = "f", digits = 0, big.mark = ".", decimal.mark = ",")
+  )
+}
+
+# observações de dados por década
 dados_decada <- comidas_bebidas_longer |>
   filter(!is.na(Decada), !is.na(Variavel), !is.na(Valor)) |>
   summarise(
