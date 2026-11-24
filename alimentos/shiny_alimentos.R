@@ -71,7 +71,7 @@ ui <- dashboardPage(
         tabName = "aba2_his_war_beer",
         fluidRow(
           box(
-            title = "Série Temporal das variáveis por década: O que mais oscilou nas guerras? (Destaques de 1914–1918 e 1939–1945)",
+            title = "Série Temporal das variáveis por década: O que mais oscilou nas guerras? (1ª Guerra Mundial: 1914–1918 e 2ª Guerra Mundial: 1939–1945)",
             status = "success",
             solidHeader = TRUE,
             width = 12,
