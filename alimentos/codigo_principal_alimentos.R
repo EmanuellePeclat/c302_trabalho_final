@@ -4,7 +4,7 @@ library(shinydashboard)
 library(DT)
 library(plotly)
 
-#traduzir a library DT
+# Traduzir a library DT
 options(DT.options = list(
   language = list(
     decimal = ",",
@@ -36,6 +36,17 @@ variaveis_prod <- c(
   "Etanol_1", "Etanol_2", "Cerveja"
 )
 
+# Paleta de cores
+paleta_produtos <- c(
+  "Açúcar"           = "#1b9e77",
+  "Glicose"          = "#d95f02",
+  "Substituto_café"  = "#7570b3",
+  "Oleo_de_sementes" = "#e7298a",
+  "Etanol_1"         = "#66a61e",
+  "Etanol_2"         = "#e6ab02",
+  "Cerveja"          = "#1f78b4"
+)
+
 # Tradução das colunas e conversão de unidades:
 # Glicose, Substituto_café e Oleo_de_sementes: quintal -> toneladas (x / 10)
 comidas_bebidas <- food_beverages |>
@@ -59,19 +70,20 @@ comidas_bebidas_longer <- comidas_bebidas |>
     cols = all_of(variaveis_prod),
     names_to = "Variavel",
     values_to = "Valor"
-  ) |> 
+  ) |>
   mutate(
     Decada = paste0(floor(Ano / 10) * 10, "s")
   )
 
 # Estatística descritiva
-cols_estat <- c("media", "dp", "min", "q1", "mediana", "q3", "max")
+cols_estat <- c("soma", "media", "dp", "min", "q1", "mediana", "q3", "max")
 
 tabela_descritiva <- comidas_bebidas_longer |>
   group_by(Decada, Variavel) |>
   summarise(
     n_obs   = sum(!is.na(Valor)),
     n_na    = sum(is.na(Valor)),
+    soma    = sum(Valor, na.rm = TRUE),
     media   = mean(Valor, na.rm = TRUE),
     dp      = sd(Valor, na.rm = TRUE),
     min     = suppressWarnings(min(Valor, na.rm = TRUE)),
@@ -89,7 +101,7 @@ tabela_descritiva <- comidas_bebidas_longer |>
   ) |>
   arrange(Decada, Variavel)
 
-#funções
+# Funções e auxiliares
 anos_min <- min(comidas_bebidas_longer$Ano, na.rm = TRUE)
 anos_max <- max(comidas_bebidas_longer$Ano, na.rm = TRUE)
 decadas  <- sort(unique(na.omit(comidas_bebidas_longer$Decada)))
@@ -102,8 +114,15 @@ fmt_br <- function(x) {
   )
 }
 
+fmt_int_br <- function(x) {
+  ifelse(
+    is.na(x) | !is.finite(x),
+    "NA",
+    formatC(round(x), format = "f", digits = 0, big.mark = ".", decimal.mark = ",")
+  )
+}
 
-#=============== Segunda Aba ====================
+# observações de dados por década
 dados_decada <- comidas_bebidas_longer |>
   filter(!is.na(Decada), !is.na(Variavel), !is.na(Valor)) |>
   summarise(
@@ -114,7 +133,7 @@ dados_decada <- comidas_bebidas_longer |>
   ) |>
   mutate(
     decada_num = as.numeric(sub("s$", "", Decada)),
-    dp_decada  = coalesce(dp_decada, 0),   # década com 1 observação: DP = 0
+    dp_decada  = coalesce(dp_decada, 0), # década com 1 observação: DP = 0
     inferior   = valor_decada - dp_decada,
     superior   = valor_decada + dp_decada
   ) |>
