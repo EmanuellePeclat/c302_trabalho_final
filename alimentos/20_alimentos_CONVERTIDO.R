@@ -1,5 +1,5 @@
 # =====================================================================
-# PÁGINA ALIMENTOS (2)  —  heatmap, guerras e ranking
+# PÁGINA ALIMENTOS —  heatmap, guerras e ranking
 # =====================================================================
 # Convertido de: codigo_principal_alimentos.R + shiny_alimentos.R
 # Molde seguido: R/20_alimentos.R
@@ -465,3 +465,4 @@ server_alimentos <- function(input, output, session) {
     grafico_ranking_alimentos(input$periodo_ranking_alimentos)
   )
 }
+
